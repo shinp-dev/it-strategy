@@ -22,6 +22,7 @@
   };
 
   const panelsEl = document.getElementById('panels');
+  const documentPickerEl = document.getElementById('document-picker');
   const yearSelect = document.getElementById('year-select');
   const seasonLabel = document.getElementById('season-label');
   const cacheStatus = document.getElementById('cache-status');
@@ -58,20 +59,49 @@
     document.getElementById('source-link').href = year.sourcePage;
     panelInstances.length = 0;
     panelsEl.replaceChildren();
+    documentPickerEl.replaceChildren();
     year.docs.forEach(function (doc, index) {
       const instance = makePanel(yearId, doc, index);
       panelInstances.push(instance);
       panelsEl.appendChild(instance.root);
-      if (instance.open) loadDocument(instance);
+      const label = el('label', 'document-toggle');
+      const checkbox = document.createElement('input');
+      checkbox.type = 'checkbox';
+      checkbox.checked = instance.visible;
+      checkbox.setAttribute('aria-label', doc.title + 'を表示');
+      checkbox.addEventListener('change', function () { setPanelVisibility(instance, checkbox.checked); });
+      label.append(checkbox, document.createTextNode(doc.title));
+      documentPickerEl.appendChild(label);
+      instance.root.hidden = !instance.visible;
+      if (instance.visible) loadDocument(instance);
     });
+    updatePanelLayout();
   }
 
+  function setPanelVisibility(panel, visible) {
+    panelInstances.forEach(function (item) { if (item.visible) rememberPosition(item); });
+    panel.visible = visible;
+    panel.state.visible = visible;
+    panel.root.hidden = !visible;
+    writeState(panel);
+    updatePanelLayout();
+    if (visible && !panel.pages.length) loadDocument(panel);
+    clearTimeout(panelLayoutTimer);
+    panelLayoutTimer = setTimeout(refreshVisiblePanels, 260);
+  }
+
+  function updatePanelLayout() {
+    const visiblePanels = panelInstances.filter(function (panel) { return panel.visible; });
+    panelsEl.dataset.visibleCount = String(visiblePanels.length);
+    panelsEl.style.setProperty('--visible-count', String(Math.max(1, visiblePanels.length)));
+    visiblePanels.forEach(function (panel, index) { panel.root.dataset.visibleIndex = String(index + 1); });
+  }
   function makePanel(yearId, doc, index) {
     const key = 'st-study-v1:' + yearId + ':' + doc.id;
     const state = readState(key);
     const panel = {
       yearId: yearId, doc: doc, key: key, state: state,
-      open: state.open !== false, color: state.color || 'yellow', mode: 'read',
+      visible: state.visible !== false, zoom: typeof state.zoom === 'number' ? state.zoom : 1, color: state.color || 'yellow', mode: 'read',
       root: el('article', 'document-panel'), pages: [], scroll: null, stack: null,
       strip: null, count: null, selectionHint: null
     };
@@ -84,30 +114,14 @@
     const subtitle = el('span', 'panel-subtitle', doc.subtitle);
     titleWrap.append(title, subtitle);
     headingMain.append(idx, titleWrap);
-    const collapse = el('button', 'collapse-button', panel.open ? '閉じる －' : '開く ＋');
-    collapse.type = 'button';
-    collapse.setAttribute('aria-expanded', String(panel.open));
-    collapse.addEventListener('click', function () {
-      panelInstances.forEach(function (item) { if (item.open) rememberPosition(item); });
-      panel.open = !panel.open;
-      panel.root.classList.toggle('collapsed', !panel.open);
-      collapse.textContent = panel.open ? '閉じる －' : '開く ＋';
-      collapse.setAttribute('aria-expanded', String(panel.open));
-      panel.state.open = panel.open;
-      writeState(panel);
-      if (panel.open && !panel.pages.length) loadDocument(panel);
-      if (panel.open) setTimeout(function () { restorePosition(panel); }, 50);
-      clearTimeout(panelLayoutTimer);
-      panelLayoutTimer = setTimeout(refreshOpenPanels, 260);
-    });
-    heading.append(headingMain, collapse);
+    heading.appendChild(headingMain);
     panel.root.appendChild(heading);
 
     const toolbar = el('div', 'panel-tools');
     const left = el('div', 'tool-group');
     const highlightButton = el('button', 'tool-button', '▨ マーカー');
     highlightButton.type = 'button';
-    highlightButton.title = 'PDFの文字を選択してハイライト';
+    highlightButton.title = 'PDF上を横方向にドラッグしてマーカー線を引く';
     const bookmarkButton = el('button', 'tool-button', '― しおり');
     bookmarkButton.type = 'button';
     bookmarkButton.title = 'ページ上をクリックして横線しおりを置く';
@@ -130,8 +144,22 @@
       picker.appendChild(swatch);
     });
     left.appendChild(picker);
+    const zoom = el('div', 'zoom-tools');
+    const zoomOut = el('button', 'zoom-button', '−');
+    zoomOut.type = 'button';
+    zoomOut.title = '縮小';
+    const zoomLabel = el('span', 'zoom-label');
+    const zoomIn = el('button', 'zoom-button', '+');
+    zoomIn.type = 'button';
+    zoomIn.title = '拡大';
+    zoomOut.addEventListener('click', function () { setPanelZoom(panel, panel.zoom - 0.25); });
+    zoomIn.addEventListener('click', function () { setPanelZoom(panel, panel.zoom + 0.25); });
+    zoom.append(zoomOut, zoomLabel, zoomIn);
+    panel.zoomLabel = zoomLabel;
+    updateZoomLabel(panel);
+
     panel.count = el('span', 'panel-count', 'PDF準備中');
-    toolbar.append(left, panel.count);
+    toolbar.append(left, zoom, panel.count);
     panel.root.appendChild(toolbar);
     panel.buttons = { highlight: highlightButton, bookmark: bookmarkButton, swatches: Array.from(picker.children) };
 
@@ -146,21 +174,38 @@
     panel.selectionHint.hidden = true;
     panel.scroll.appendChild(panel.selectionHint);
     panel.scroll.addEventListener('scroll', function () { schedulePositionSave(panel); }, { passive: true });
-    panel.scroll.addEventListener('pointerup', function (event) { handlePointerUp(panel, event); });
+    panel.scroll.addEventListener('pointerdown', function (event) { handleMarkerPointerDown(panel, event); });
+    panel.scroll.addEventListener('pointermove', function (event) { handleMarkerPointerMove(panel, event); });
+    panel.scroll.addEventListener('pointerup', function (event) { handleMarkerPointerUp(panel, event); });
+    panel.scroll.addEventListener('pointercancel', function () { cancelMarkerDraft(panel); });
     panel.scroll.addEventListener('click', function (event) { handlePageClick(panel, event); });
-    panel.root.classList.toggle('collapsed', !panel.open);
     updateSwatches(panel);
     drawAnnotationList(panel);
     return panel;
   }
 
-  function refreshOpenPanels() {
+  function refreshVisiblePanels() {
     panelInstances.forEach(function (panel) {
-      if (!panel.open || !panel.pages.length || panel.loading) return;
+      if (!panel.visible || !panel.pages.length || panel.loading) return;
       panel.pages = [];
       panel.stack.replaceChildren();
       loadDocument(panel);
     });
+  }
+  function setPanelZoom(panel, zoom) {
+    panel.zoom = Math.max(0.5, Math.min(2, Math.round(zoom * 100) / 100));
+    panel.state.zoom = panel.zoom;
+    updateZoomLabel(panel);
+    writeState(panel);
+    if (!panel.pages.length || panel.loading) return;
+    rememberPosition(panel);
+    panel.pages = [];
+    panel.stack.replaceChildren();
+    loadDocument(panel);
+  }
+
+  function updateZoomLabel(panel) {
+    if (panel.zoomLabel) panel.zoomLabel.textContent = Math.round(panel.zoom * 100) + '%';
   }
   function setMode(panel, mode) {
     panel.mode = mode;
@@ -168,9 +213,9 @@
     panel.buttons.bookmark.classList.toggle('bookmark-active', mode === 'bookmark');
     panel.selectionHint.hidden = mode === 'read';
     panel.selectionHint.textContent = mode === 'highlight'
-      ? 'PDFの文字をドラッグして選択すると、ハイライトを保存します'
+      ? 'PDF上を横方向にドラッグしてマーカー線を引きます'
       : mode === 'bookmark' ? 'ページのしおりを置きたい高さをクリックしてください' : '';
-    panel.scroll.classList.toggle('selecting', mode === 'highlight');
+    panel.scroll.classList.toggle('marking', mode === 'highlight');
   }
 
   function updateSwatches(panel) {
@@ -196,8 +241,8 @@
       for (let pageNumber = 1; pageNumber <= pdf.numPages; pageNumber += 1) {
         const page = await pdf.getPage(pageNumber);
         const baseViewport = page.getViewport({ scale: 1 });
-        const availableWidth = Math.max(220, panel.scroll.clientWidth - 34);
-        const scale = Math.min(1.55, availableWidth / baseViewport.width);
+        const availableWidth = Math.max(220, panel.scroll.clientWidth - 12);
+        const scale = Math.min(3, Math.max(0.4, availableWidth / baseViewport.width * panel.zoom));
         const viewport = page.getViewport({ scale: scale });
         const wrapper = el('div', 'pdf-page');
         wrapper.dataset.page = String(pageNumber);
@@ -245,32 +290,68 @@
     }
   }
 
-  function handlePointerUp(panel, event) {
-    if (panel.mode !== 'highlight') return;
-    const selection = window.getSelection();
-    if (!selection || selection.isCollapsed || !selection.rangeCount) return;
-    const range = selection.getRangeAt(0);
-    const pageElement = range.commonAncestorContainer.nodeType === 1
-      ? range.commonAncestorContainer.closest('.pdf-page')
-      : range.commonAncestorContainer.parentElement.closest('.pdf-page');
-    if (!pageElement || !panel.scroll.contains(pageElement)) return;
+  function handleMarkerPointerDown(panel, event) {
+    if (panel.mode !== 'highlight' || event.button !== 0) return;
+    if (event.target.closest('.highlight-mark, .bookmark-mark')) return;
+    const pageElement = event.target.closest('.pdf-page');
+    if (!pageElement) return;
     const page = panel.pages.find(function (item) { return item.wrapper === pageElement; });
     if (!page) return;
-    const pageRect = pageElement.getBoundingClientRect();
-    const rects = Array.from(range.getClientRects()).filter(function (rect) { return rect.width > 1 && rect.height > 1; });
-    const marks = rects.map(function (rect) {
-      return { x: (rect.left - pageRect.left) / pageRect.width, y: (rect.top - pageRect.top) / pageRect.height, w: rect.width / pageRect.width, h: rect.height / pageRect.height };
-    });
-    if (!marks.length) return;
+    const rect = pageElement.getBoundingClientRect();
+    const x = Math.max(0, Math.min(1, (event.clientX - rect.left) / rect.width));
+    const y = Math.max(0, Math.min(1, (event.clientY - rect.top) / rect.height));
+    const preview = el('div', 'highlight-mark marker-preview');
+    panel.markerDraft = { page: page, startX: x, endX: x, y: y, preview: preview, pointerId: event.pointerId };
+    page.overlay.appendChild(preview);
+    updateMarkerPreview(panel);
+    event.preventDefault();
+    try { panel.scroll.setPointerCapture(event.pointerId); } catch (_) {}
+  }
+
+  function handleMarkerPointerMove(panel, event) {
+    if (!panel.markerDraft || panel.markerDraft.pointerId !== event.pointerId) return;
+    const rect = panel.markerDraft.page.wrapper.getBoundingClientRect();
+    panel.markerDraft.endX = Math.max(0, Math.min(1, (event.clientX - rect.left) / rect.width));
+    updateMarkerPreview(panel);
+  }
+
+  function handleMarkerPointerUp(panel, event) {
+    const draft = panel.markerDraft;
+    if (!draft || draft.pointerId !== event.pointerId) return;
+    handleMarkerPointerMove(panel, event);
+    const x = Math.min(draft.startX, draft.endX);
+    const width = Math.abs(draft.endX - draft.startX);
+    panel.markerDraft = null;
+    if (width < 0.008) {
+      draft.preview.remove();
+      return;
+    }
     panel.state.highlights = panel.state.highlights || [];
-    panel.state.highlights.push({ id: makeId(), page: page.number, color: panel.color, rects: marks, text: selection.toString().trim().slice(0, 42) });
-    selection.removeAllRanges();
+    panel.state.highlights.push({
+      id: makeId(), page: draft.page.number, color: panel.color,
+      x: x, y: draft.y, w: width
+    });
     writeState(panel);
     drawAnnotations(panel);
     drawAnnotationList(panel);
-    toast('ハイライトを保存しました');
+    toast('マーカー線を保存しました');
   }
 
+  function updateMarkerPreview(panel) {
+    const draft = panel.markerDraft;
+    if (!draft) return;
+    const color = COLORS.find(function (item) { return item.id === panel.color; }) || COLORS[0];
+    draft.preview.style.left = (Math.min(draft.startX, draft.endX) * 100) + '%';
+    draft.preview.style.top = (draft.y * 100) + '%';
+    draft.preview.style.width = (Math.max(0.008, Math.abs(draft.endX - draft.startX)) * 100) + '%';
+    draft.preview.style.backgroundColor = color.value;
+  }
+
+  function cancelMarkerDraft(panel) {
+    if (!panel.markerDraft) return;
+    panel.markerDraft.preview.remove();
+    panel.markerDraft = null;
+  }
   function handlePageClick(panel, event) {
     if (panel.mode !== 'bookmark') return;
     if (event.target.closest('.bookmark-mark')) return;
@@ -306,36 +387,48 @@
       page.overlay.replaceChildren();
       (panel.state.highlights || []).filter(function (mark) { return mark.page === page.number; }).forEach(function (mark) {
         const color = COLORS.find(function (item) { return item.id === mark.color; }) || COLORS[0];
-        mark.rects.forEach(function (rect) {
+        if (Array.isArray(mark.rects)) {
+          mark.rects.forEach(function (rect) {
+            const node = el('div', 'highlight-mark legacy-highlight-mark');
+            node.style.left = (rect.x * 100) + '%';
+            node.style.top = (rect.y * 100) + '%';
+            node.style.width = (rect.w * 100) + '%';
+            node.style.height = (rect.h * 100) + '%';
+            node.style.backgroundColor = color.value;
+            node.title = mark.text || 'クリックして削除';
+            node.addEventListener('click', function (event) { event.stopPropagation(); removeAnnotation(panel, 'highlights', mark.id); });
+            page.overlay.appendChild(node);
+          });
+        } else {
           const node = el('div', 'highlight-mark');
-          node.style.left = (rect.x * 100) + '%'; node.style.top = (rect.y * 100) + '%';
-          node.style.width = (rect.w * 100) + '%'; node.style.height = (rect.h * 100) + '%';
+          node.style.left = (mark.x * 100) + '%';
+          node.style.top = (mark.y * 100) + '%';
+          node.style.width = (mark.w * 100) + '%';
           node.style.backgroundColor = color.value;
-          node.title = mark.text || 'クリックして削除';
+          node.title = 'クリックして削除';
           node.addEventListener('click', function (event) { event.stopPropagation(); removeAnnotation(panel, 'highlights', mark.id); });
           page.overlay.appendChild(node);
-        });
+        }
       });
       (panel.state.bookmarks || []).filter(function (mark) { return mark.page === page.number; }).forEach(function (mark) {
         const color = COLORS.find(function (item) { return item.id === mark.color; }) || COLORS[0];
         const line = el('div', 'bookmark-mark');
-        line.style.top = (mark.y * 100) + '%'; line.style.color = color.value;
-        const label = el('span', '', mark.name); line.appendChild(label);
+        line.style.top = (mark.y * 100) + '%';
+        line.style.color = color.value;
+        const label = el('span', '', mark.name);
+        line.appendChild(label);
         line.title = mark.name + ' · クリックして削除';
         line.addEventListener('click', function (event) { event.stopPropagation(); removeAnnotation(panel, 'bookmarks', mark.id); });
         page.overlay.appendChild(line);
       });
     });
   }
-
   function drawAnnotationList(panel) {
     panel.strip.replaceChildren();
     const bookmarks = panel.state.bookmarks || [];
     const highlights = panel.state.highlights || [];
-    if (!bookmarks.length && !highlights.length) {
-      panel.strip.appendChild(el('span', 'annotation-empty', 'しおり・ハイライトはまだありません'));
-      return;
-    }
+    if (!bookmarks.length && !highlights.length) { panel.strip.hidden = true; return; }
+    panel.strip.hidden = false;
     bookmarks.forEach(function (mark) {
       const color = COLORS.find(function (item) { return item.id === mark.color; }) || COLORS[0];
       const chip = el('button', 'annotation-chip jump');
