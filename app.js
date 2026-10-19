@@ -31,6 +31,7 @@
   const bookmarkName = document.getElementById('bookmark-name');
   const dbPromise = openCacheDb();
   let toastTimer;
+  let panelLayoutTimer;
   let pendingBookmark = null;
   const panelInstances = [];
 
@@ -87,6 +88,7 @@
     collapse.type = 'button';
     collapse.setAttribute('aria-expanded', String(panel.open));
     collapse.addEventListener('click', function () {
+      panelInstances.forEach(function (item) { if (item.open) rememberPosition(item); });
       panel.open = !panel.open;
       panel.root.classList.toggle('collapsed', !panel.open);
       collapse.textContent = panel.open ? '閉じる －' : '開く ＋';
@@ -95,6 +97,8 @@
       writeState(panel);
       if (panel.open && !panel.pages.length) loadDocument(panel);
       if (panel.open) setTimeout(function () { restorePosition(panel); }, 50);
+      clearTimeout(panelLayoutTimer);
+      panelLayoutTimer = setTimeout(refreshOpenPanels, 260);
     });
     heading.append(headingMain, collapse);
     panel.root.appendChild(heading);
@@ -150,6 +154,14 @@
     return panel;
   }
 
+  function refreshOpenPanels() {
+    panelInstances.forEach(function (panel) {
+      if (!panel.open || !panel.pages.length || panel.loading) return;
+      panel.pages = [];
+      panel.stack.replaceChildren();
+      loadDocument(panel);
+    });
+  }
   function setMode(panel, mode) {
     panel.mode = mode;
     panel.buttons.highlight.classList.toggle('active', mode === 'highlight');
@@ -362,18 +374,21 @@
   }
 
   let saveTimers = new WeakMap();
+  function rememberPosition(panel) {
+    if (!panel.pages.length) return;
+    const scrollRect = panel.scroll.getBoundingClientRect();
+    const visible = panel.pages.map(function (page) {
+      return { page: page, distance: Math.abs(page.wrapper.getBoundingClientRect().top - scrollRect.top - 20) };
+    }).sort(function (a, b) { return a.distance - b.distance; })[0];
+    if (!visible) return;
+    const pageRect = visible.page.wrapper.getBoundingClientRect();
+    panel.state.position = { page: visible.page.number, y: Math.max(0, Math.min(1, (scrollRect.top + 20 - pageRect.top) / pageRect.height)) };
+    writeState(panel);
+  }
+
   function schedulePositionSave(panel) {
     clearTimeout(saveTimers.get(panel));
-    saveTimers.set(panel, setTimeout(function () {
-      const scrollRect = panel.scroll.getBoundingClientRect();
-      const visible = panel.pages.map(function (page) {
-        return { page: page, distance: Math.abs(page.wrapper.getBoundingClientRect().top - scrollRect.top - 20) };
-      }).sort(function (a, b) { return a.distance - b.distance; })[0];
-      if (!visible) return;
-      const pageRect = visible.page.wrapper.getBoundingClientRect();
-      panel.state.position = { page: visible.page.number, y: Math.max(0, Math.min(1, (scrollRect.top + 20 - pageRect.top) / pageRect.height)) };
-      writeState(panel);
-    }, 220));
+    saveTimers.set(panel, setTimeout(function () { rememberPosition(panel); }, 220));
   }
 
   function restorePosition(panel) {
