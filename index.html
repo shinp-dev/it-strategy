@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f6f5f1">
+  <meta name="description" content="ITストラテジスト午後Iの過去問を並べて読み比べ、学習メモを残せるローカル学習ノート。">
+  <title>午後I 読み比べノート</title>
+  <link rel="stylesheet" href="./styles.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js" defer></script>
+  <script src="./app.js" defer></script>
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="./" aria-label="午後I 読み比べノート">
+      <span class="brand-mark">I</span>
+      <span><strong>午後I 読み比べノート</strong><small>IT STRATEGIST · STUDY DESK</small></span>
+    </a>
+    <div class="year-control">
+      <label for="year-select">年度</label>
+      <select id="year-select" aria-label="年度を選択"></select>
+      <span id="season-label" class="season-pill"></span>
+    </div>
+    <div class="top-actions">
+      <span id="cache-status" class="cache-status" role="status">資料キャッシュを確認中</span>
+      <button id="clear-cache" class="quiet-button" type="button" title="保存済みPDFを削除します">資料キャッシュを削除</button>
+    </div>
+  </header>
+
+  <main>
+    <section class="intro" aria-label="使い方">
+      <div>
+        <p class="eyebrow">READ · CONNECT · REVIEW</p>
+        <h1>問題・解答例・採点講評を、<em>並べて読む。</em></h1>
+        <p class="intro-copy">PDFは選択年度のIPA公式資料を表示します。マーカーと横線しおりはこのブラウザに保存されます。</p>
+      </div>
+      <div class="intro-meta"><span class="status-dot"></span><span>自動保存オン</span><span class="meta-divider"></span><span>この端末内に保存</span></div>
+    </section>
+
+    <section id="panels" class="panels" aria-label="年度資料"></section>
+    <footer class="site-footer">
+      <div><strong>出典</strong> 独立行政法人 情報処理推進機構（IPA）</div>
+      <p>過去問題等はIPAの公開資料を参照しています。著作権は放棄されていません。利用条件を確認のうえ、教育目的などの範囲でご利用ください。</p>
+      <a id="source-link" href="https://www.ipa.go.jp/shiken/mondai-kaiotu/2025r07.html" target="_blank" rel="noreferrer">IPAの過去問題・利用条件を見る ↗</a>
+    </footer>
+  </main>
+
+  <dialog id="name-dialog" class="name-dialog">
+    <form method="dialog" id="bookmark-form">
+      <p class="eyebrow">HORIZONTAL BOOKMARK</p>
+      <h2>しおりに名前を付ける</h2>
+      <label for="bookmark-name">名前</label>
+      <input id="bookmark-name" maxlength="48" placeholder="例：問2 設問3" required>
+      <div class="dialog-actions"><button class="quiet-button" value="cancel">キャンセル</button><button id="save-bookmark" class="primary-button" value="save">しおりを追加</button></div>
+    </form>
+  </dialog>
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+</body>
+</html>
