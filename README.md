@@ -42,6 +42,6 @@ GitHubリポジトリの **Settings → Secrets and variables → Actions → Re
 - `CLOUDFLARE_ACCOUNT_ID`
 - `CLOUDFLARE_API_TOKEN`（Cloudflare PagesのEdit権限）
 
-Cloudflare側にはPagesプロジェクト `it-strategy` が必要です。まだ作成していない場合は、Cloudflare Dashboardでプロジェクト名 `it-strategy` を作成し、本番ブランチを `main` に設定してからActionsを実行してください。デプロイ先は `https://it-strategy.pages.dev` です（同名プロジェクトを別アカウントですでに使用している場合、URLに別の一意名が付きます）。
+ワークフローはPagesプロジェクト `it-strategy` が存在しない場合に作成し、本番ブランチを `main` に設定します。デプロイ先は `https://it-strategy.pages.dev` です（同名プロジェクトを別アカウントですでに使用している場合、URLに別の一意名が付きます）。
 
 公開後もPDFの初回取得にはネット接続が必要です。PDFは訪問者のブラウザ内キャッシュに保存されます。
