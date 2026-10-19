@@ -27,9 +27,7 @@ main{max-width:none;padding:0 14px}
 .tool-button{height:26px;padding:0 6px;font-size:10px}
 .color-pick{gap:3px;padding-left:5px}
 .color-swatch{width:13px;height:13px}
-.zoom-tools{display:flex;align-items:center;gap:2px;white-space:nowrap}
-.zoom-button{width:22px;height:23px;padding:0;border:1px solid var(--line);border-radius:5px;background:#fffefa;color:#555d53;font:12px 'DM Sans','Noto Sans JP',sans-serif;cursor:pointer}
-.zoom-button:hover{background:#f0f2ec}
+.zoom-tools{display:flex;align-items:center;white-space:nowrap;cursor:default}
 .zoom-label{min-width:32px;text-align:center;color:#777d74;font-size:9px;font-variant-numeric:tabular-nums}
 .panel-count{font-size:8px}
 .annotation-strip{min-height:0;padding:4px 7px;gap:3px;border-bottom:1px solid #f0efe9}

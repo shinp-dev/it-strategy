@@ -145,16 +145,9 @@
     });
     left.appendChild(picker);
     const zoom = el('div', 'zoom-tools');
-    const zoomOut = el('button', 'zoom-button', '−');
-    zoomOut.type = 'button';
-    zoomOut.title = '縮小';
     const zoomLabel = el('span', 'zoom-label');
-    const zoomIn = el('button', 'zoom-button', '+');
-    zoomIn.type = 'button';
-    zoomIn.title = '拡大';
-    zoomOut.addEventListener('click', function () { setPanelZoom(panel, panel.zoom - 0.25); });
-    zoomIn.addEventListener('click', function () { setPanelZoom(panel, panel.zoom + 0.25); });
-    zoom.append(zoomOut, zoomLabel, zoomIn);
+    zoom.title = 'Ctrl + マウスホイールで、カーソル位置を中心に拡大・縮小';
+    zoom.appendChild(zoomLabel);
     panel.zoomLabel = zoomLabel;
     updateZoomLabel(panel);
 
@@ -174,6 +167,7 @@
     panel.selectionHint.hidden = true;
     panel.scroll.appendChild(panel.selectionHint);
     panel.scroll.addEventListener('scroll', function () { schedulePositionSave(panel); }, { passive: true });
+    panel.scroll.addEventListener('wheel', function (event) { handleZoomWheel(panel, event); }, { passive: false });
     panel.scroll.addEventListener('pointerdown', function (event) { handleMarkerPointerDown(panel, event); });
     panel.scroll.addEventListener('pointermove', function (event) { handleMarkerPointerMove(panel, event); });
     panel.scroll.addEventListener('pointerup', function (event) { handleMarkerPointerUp(panel, event); });
@@ -192,20 +186,58 @@
       loadDocument(panel);
     });
   }
-  function setPanelZoom(panel, zoom) {
-    panel.zoom = Math.max(0.5, Math.min(2, Math.round(zoom * 100) / 100));
-    panel.state.zoom = panel.zoom;
-    updateZoomLabel(panel);
-    writeState(panel);
-    if (!panel.pages.length || panel.loading) return;
-    rememberPosition(panel);
-    panel.pages = [];
-    panel.stack.replaceChildren();
-    loadDocument(panel);
-  }
-
   function updateZoomLabel(panel) {
     if (panel.zoomLabel) panel.zoomLabel.textContent = Math.round(panel.zoom * 100) + '%';
+  }
+
+  function handleZoomWheel(panel, event) {
+    if (!event.ctrlKey && !event.metaKey) return;
+    event.preventDefault();
+    if (!panel.pages.length || panel.loading) return;
+
+    const nextZoom = Math.max(0.5, Math.min(2, Math.round((panel.zoom + (event.deltaY < 0 ? 0.1 : -0.1)) * 100) / 100));
+    if (nextZoom === panel.zoom) return;
+
+    const pageElement = event.target.closest('.pdf-page');
+    const page = pageElement && panel.pages.find(function (item) { return item.wrapper === pageElement; });
+    if (page) {
+      const pageRect = page.wrapper.getBoundingClientRect();
+      const scrollRect = panel.scroll.getBoundingClientRect();
+      panel.zoomAnchor = {
+        page: page.number,
+        x: Math.max(0, Math.min(1, (event.clientX - pageRect.left) / pageRect.width)),
+        y: Math.max(0, Math.min(1, (event.clientY - pageRect.top) / pageRect.height)),
+        screenX: event.clientX - scrollRect.left,
+        screenY: event.clientY - scrollRect.top
+      };
+    }
+
+    panel.zoom = nextZoom;
+    panel.state.zoom = nextZoom;
+    updateZoomLabel(panel);
+    writeState(panel);
+    clearTimeout(panel.zoomTimer);
+    panel.zoomTimer = setTimeout(function () {
+      if (panel.loading || !panel.visible) return;
+      panel.pages = [];
+      panel.stack.replaceChildren();
+      loadDocument(panel);
+    }, 180);
+  }
+
+  function restoreZoomAnchor(panel) {
+    const anchor = panel.zoomAnchor;
+    if (!anchor) return false;
+    const page = panel.pages.find(function (item) { return item.number === anchor.page; });
+    if (!page) return false;
+    const pageRect = page.wrapper.getBoundingClientRect();
+    const scrollRect = panel.scroll.getBoundingClientRect();
+    const targetX = pageRect.left + pageRect.width * anchor.x;
+    const targetY = pageRect.top + pageRect.height * anchor.y;
+    panel.scroll.scrollLeft += targetX - (scrollRect.left + anchor.screenX);
+    panel.scroll.scrollTop += targetY - (scrollRect.top + anchor.screenY);
+    panel.zoomAnchor = null;
+    return true;
   }
   function setMode(panel, mode) {
     panel.mode = mode;
@@ -271,7 +303,8 @@
       }
       panel.stack.querySelectorAll('.pdf-empty').forEach(function (node) { node.remove(); });
       panel.loading = false;
-      restorePosition(panel);
+      if (restoreZoomAnchor(panel)) rememberPosition(panel);
+      else restorePosition(panel);
       updateCacheStatus();
     } catch (error) {
       panel.loading = false;
