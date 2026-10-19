@@ -28,7 +28,7 @@ main{max-width:none;padding:0 14px}
 .color-pick{gap:3px;padding-left:5px}
 .color-swatch{width:13px;height:13px}
 .zoom-tools{display:flex;align-items:center;gap:2px;white-space:nowrap}
-.zoom-button{width:22px;height:23px;padding:0;border:1px solid var(--line);border-radius:5px;background:#fffefa;color:#555d53;font:12px inherit;cursor:pointer}
+.zoom-button{width:22px;height:23px;padding:0;border:1px solid var(--line);border-radius:5px;background:#fffefa;color:#555d53;font:12px 'DM Sans','Noto Sans JP',sans-serif;cursor:pointer}
 .zoom-button:hover{background:#f0f2ec}
 .zoom-label{min-width:32px;text-align:center;color:#777d74;font-size:9px;font-variant-numeric:tabular-nums}
 .panel-count{font-size:8px}
@@ -36,7 +36,7 @@ main{max-width:none;padding:0 14px}
 .annotation-strip[hidden]{display:none!important}
 .annotation-chip{padding:3px 5px;font-size:8px}
 .pdf-scroll{height:clamp(300px,calc(100vh - 295px),820px);min-height:300px;max-height:none}
-.page-stack{padding:7px 5px 20px;gap:9px;align-items:flex-start}
+.page-stack{padding:7px 0 20px;gap:9px;align-items:flex-start}
 .pdf-page{max-width:none}
 .pdf-page canvas{max-width:none;height:auto}
 .highlight-mark:not(.legacy-highlight-mark){height:8px;transform:translateY(-50%);z-index:1}
@@ -69,5 +69,5 @@ main{max-width:none;padding:0 14px}
   .panels[data-visible-count="3"]>[data-visible-index="3"]{grid-column:auto}
   .pdf-scroll,.document-panel:last-child .pdf-scroll,.panels[data-visible-count="3"]>[data-visible-index="3"] .pdf-scroll{height:64vh;min-height:300px}
   .panel-tools{padding:4px 5px}
-  .page-stack{padding:6px 3px 16px}
+  .page-stack{padding:6px 0 16px}
 }
