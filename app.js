@@ -14,9 +14,9 @@
     '2025-spring': {
       label: '令和7年度', season: '春期', sourcePage: 'https://www.ipa.go.jp/shiken/mondai-kaiotu/2025r07.html',
       docs: [
-        { id: 'question', title: '問題', subtitle: '午後Ⅰ · 問題冊子', url: 'https://www.ipa.go.jp/shiken/mondai-kaiotu/nl10bi0000009lh8-att/2025r07h_st_pm1_qs.pdf' },
-        { id: 'answer', title: '解答例', subtitle: '午後Ⅰ · 解答例', url: 'https://www.ipa.go.jp/shiken/mondai-kaiotu/nl10bi0000009lh8-att/2025r07h_st_pm1_ans.pdf' },
-        { id: 'comment', title: '採点講評', subtitle: '午後Ⅰ · 採点講評', url: 'https://www.ipa.go.jp/shiken/mondai-kaiotu/nl10bi0000009lh8-att/2025r07h_st_pm1_cmnt.pdf' }
+        { id: 'question', title: '問題', subtitle: '午後Ⅰ · 問題冊子', url: '/api/pdf/question', sourceUrl: 'https://www.ipa.go.jp/shiken/mondai-kaiotu/nl10bi0000009lh8-att/2025r07h_st_pm1_qs.pdf' },
+        { id: 'answer', title: '解答例', subtitle: '午後Ⅰ · 解答例', url: '/api/pdf/answer', sourceUrl: 'https://www.ipa.go.jp/shiken/mondai-kaiotu/nl10bi0000009lh8-att/2025r07h_st_pm1_ans.pdf' },
+        { id: 'comment', title: '採点講評', subtitle: '午後Ⅰ · 採点講評', url: '/api/pdf/comment', sourceUrl: 'https://www.ipa.go.jp/shiken/mondai-kaiotu/nl10bi0000009lh8-att/2025r07h_st_pm1_cmnt.pdf' }
       ]
     }
   };
@@ -223,7 +223,7 @@
       const notice = el('div', 'pdf-empty');
       notice.innerHTML = '<strong>PDFを表示できませんでした</strong>通信または公式サイト側の設定をご確認ください。下のリンクから公式PDFを開けます。';
       const link = el('a', '', 'IPA公式PDFを開く ↗');
-      link.href = panel.doc.url;
+      link.href = panel.doc.sourceUrl || panel.doc.url;
       link.target = '_blank';
       link.rel = 'noreferrer';
       notice.appendChild(link);
