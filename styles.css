@@ -37,6 +37,7 @@ main{max-width:none;padding:0 14px}
 .page-stack{padding:7px 0 20px;gap:9px;align-items:flex-start}
 .pdf-page{max-width:none}
 .pdf-page canvas{max-width:none;height:auto}
+.pdf-render-stage{position:absolute;top:0;left:0;visibility:hidden;pointer-events:none;z-index:-1}
 .highlight-mark:not(.legacy-highlight-mark){height:8px;transform:translateY(-50%);z-index:1}
 .legacy-highlight-mark{transform:none}
 .marker-preview{pointer-events:none!important}

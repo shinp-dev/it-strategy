@@ -181,9 +181,7 @@
   function refreshVisiblePanels() {
     panelInstances.forEach(function (panel) {
       if (!panel.visible || !panel.pages.length || panel.loading) return;
-      panel.pages = [];
-      panel.stack.replaceChildren();
-      loadDocument(panel);
+      loadDocument(panel, true);
     });
   }
   function updateZoomLabel(panel) {
@@ -219,9 +217,7 @@
     clearTimeout(panel.zoomTimer);
     panel.zoomTimer = setTimeout(function () {
       if (panel.loading || !panel.visible) return;
-      panel.pages = [];
-      panel.stack.replaceChildren();
-      loadDocument(panel);
+      loadDocument(panel, true);
     }, 180);
   }
 
@@ -256,18 +252,31 @@
     });
   }
 
-  async function loadDocument(panel) {
-    if (panel.loading || panel.pages.length) return;
+  async function loadDocument(panel, keepCurrentPages) {
+    const keepCurrent = keepCurrentPages === true && panel.pages.length > 0;
+    if (panel.loading || (!keepCurrent && panel.pages.length)) return;
+
+    const previousPages = panel.pages;
+    const previousZoom = typeof panel.renderedZoom === 'number' ? panel.renderedZoom : panel.zoom;
+    const renderStack = keepCurrent ? el('div', 'page-stack pdf-render-stage') : panel.stack;
+    if (keepCurrent) {
+      renderStack.style.width = panel.scroll.clientWidth + 'px';
+      panel.scroll.appendChild(renderStack);
+    }
+
     panel.loading = true;
-    panel.stack.replaceChildren();
-    panel.count.textContent = 'PDFを読み込み中…';
-    const message = el('div', 'pdf-empty');
-    message.innerHTML = '<strong>公式PDFを準備しています</strong>初回は取得後にこのブラウザへ保存します。次回からは保存済み資料を優先します。';
-    panel.stack.appendChild(message);
+    if (!keepCurrent) {
+      panel.stack.replaceChildren();
+      panel.count.textContent = 'PDFを読み込み中…';
+      const message = el('div', 'pdf-empty');
+      message.innerHTML = '<strong>公式PDFを準備しています</strong>初回は取得後にこのブラウザへ保存します。次回からは保存済み資料を優先します。';
+      panel.stack.appendChild(message);
+    }
     try {
       const bytes = await getPdfBytes(panel.doc.url);
       const pdf = await window.pdfjsLib.getDocument({ data: bytes }).promise;
-      panel.stack.replaceChildren();
+      if (!keepCurrent) panel.stack.replaceChildren();
+      panel.pages = [];
       panel.pdf = pdf;
       panel.count.textContent = pdf.numPages + 'ページ';
       for (let pageNumber = 1; pageNumber <= pdf.numPages; pageNumber += 1) {
@@ -293,7 +302,7 @@
         wrapper.appendChild(textLayer);
         const annotationLayer = el('div', 'annotation-layer');
         wrapper.appendChild(annotationLayer);
-        panel.stack.appendChild(wrapper);
+        renderStack.appendChild(wrapper);
         const context = canvas.getContext('2d', { alpha: false });
         await page.render({ canvasContext: context, viewport: viewport, transform: ratio === 1 ? null : [ratio, 0, 0, ratio, 0, 0] }).promise;
         const textContent = await page.getTextContent();
@@ -301,13 +310,32 @@
         panel.pages.push({ number: pageNumber, wrapper: wrapper, overlay: annotationLayer, viewport: viewport });
         drawAnnotations(panel);
       }
-      panel.stack.querySelectorAll('.pdf-empty').forEach(function (node) { node.remove(); });
+
+      if (keepCurrent) {
+        panel.stack.replaceChildren.apply(panel.stack, Array.from(renderStack.childNodes));
+        renderStack.remove();
+      } else {
+        panel.stack.querySelectorAll('.pdf-empty').forEach(function (node) { node.remove(); });
+      }
+      panel.renderedZoom = panel.zoom;
       panel.loading = false;
       if (restoreZoomAnchor(panel)) rememberPosition(panel);
       else restorePosition(panel);
       updateCacheStatus();
     } catch (error) {
       panel.loading = false;
+      if (keepCurrent) {
+        renderStack.remove();
+        panel.pages = previousPages;
+        panel.zoom = previousZoom;
+        panel.state.zoom = previousZoom;
+        panel.zoomAnchor = null;
+        updateZoomLabel(panel);
+        writeState(panel);
+        toast('PDFの倍率を変更できませんでした');
+        console.error('PDF zoom render failed:', error);
+        return;
+      }
       panel.count.textContent = '読み込みできません';
       panel.stack.replaceChildren();
       const notice = el('div', 'pdf-empty');
