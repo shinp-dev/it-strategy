@@ -10,47 +10,53 @@
   ];
 
   const DOCS = [
-    { id: 'question', title: '問題', subtitle: '午後Ⅰ · 問題冊子', suffix: 'qs' },
-    { id: 'answer', title: '解答例', subtitle: '午後Ⅰ · 解答例', suffix: 'ans' },
-    { id: 'comment', title: '採点講評', subtitle: '午後Ⅰ · 採点講評', suffix: 'cmnt' }
+    { id: 'question', title: '問題', suffix: 'qs' },
+    { id: 'answer', title: '解答例', suffix: 'ans' },
+    { id: 'comment', title: '採点講評', suffix: 'cmnt' }
   ];
 
-  function exam(id, label, season, sourcePage, assetDirectory, filePrefix) {
+  function exam(label, season, sourcePage, assetDirectory, filePrefix) {
     return {
       label: label, season: season, sourcePage: sourcePage,
-      docs: DOCS.map(function (doc) {
-        return {
-          id: doc.id, title: doc.title, subtitle: doc.subtitle,
-          url: '/api/pdf/' + doc.id + '?year=' + id,
-          sourceUrl: 'https://www.ipa.go.jp/shiken/mondai-kaiotu/' + assetDirectory + '/' + filePrefix + '_st_pm1_' + doc.suffix + '.pdf'
-        };
-      })
+      assetDirectory: assetDirectory, filePrefix: filePrefix
     };
   }
 
-  // IPAが午後Ⅰの資料を公開している試験回。令和2年度はITストラテジスト試験の実施なし。
+  function examDocs(yearId, year, paper) {
+    const paperLabel = paper === 'pm2' ? '午後Ⅱ' : '午後Ⅰ';
+    return DOCS.map(function (doc) {
+      return {
+        id: doc.id, title: doc.title, subtitle: paperLabel + ' · ' + (doc.id === 'question' ? '問題冊子' : doc.title),
+        url: '/api/pdf/' + doc.id + '?year=' + yearId + '&paper=' + paper,
+        sourceUrl: 'https://www.ipa.go.jp/shiken/mondai-kaiotu/' + year.assetDirectory + '/' + year.filePrefix + '_st_' + paper + '_' + doc.suffix + '.pdf'
+      };
+    });
+  }
+
+  // IPAが午後Ⅰ・午後Ⅱの資料を公開している試験回。令和2年度はITストラテジスト試験の実施なし。
   const YEARS = {
-    '2025-spring': exam('2025-spring', '令和7年度', '春期', 'https://www.ipa.go.jp/shiken/mondai-kaiotu/2025r07.html', 'nl10bi0000009lh8-att', '2025r07h'),
-    '2024-spring': exam('2024-spring', '令和6年度', '春期', 'https://www.ipa.go.jp/shiken/mondai-kaiotu/2024r06.html', 'm42obm000000afqx-att', '2024r06h'),
-    '2023-spring': exam('2023-spring', '令和5年度', '春期', 'https://www.ipa.go.jp/shiken/mondai-kaiotu/2023r05.html', 'ps6vr70000010d6y-att', '2023r05h'),
-    '2022-spring': exam('2022-spring', '令和4年度', '春期', 'https://www.ipa.go.jp/shiken/mondai-kaiotu/2022r04.html', 'gmcbt80000009sgk-att', '2022r04h'),
-    '2021-spring': exam('2021-spring', '令和3年度', '春期', 'https://www.ipa.go.jp/shiken/mondai-kaiotu/2021r03.html', 'gmcbt8000000d5ru-att', '2021r03h'),
-    '2019-autumn': exam('2019-autumn', '令和元年度', '秋期', 'https://www.ipa.go.jp/shiken/mondai-kaiotu/2019h31.html', 'gmcbt8000000dict-att', '2019r01a'),
-    '2018-autumn': exam('2018-autumn', '平成30年度', '秋期', 'https://www.ipa.go.jp/shiken/mondai-kaiotu/2018h30.html', 'gmcbt8000000f01f-att', '2018h30a'),
-    '2017-autumn': exam('2017-autumn', '平成29年度', '秋期', 'https://www.ipa.go.jp/shiken/mondai-kaiotu/2017h29.html', 'gmcbt8000000fqpm-att', '2017h29a'),
-    '2016-autumn': exam('2016-autumn', '平成28年度', '秋期', 'https://www.ipa.go.jp/shiken/mondai-kaiotu/2016h28.html', 'gmcbt8000000g6fw-att', '2016h28a'),
-    '2015-autumn': exam('2015-autumn', '平成27年度', '秋期', 'https://www.ipa.go.jp/shiken/mondai-kaiotu/2015h27.html', 'gmcbt8000000gxj0-att', '2015h27a'),
-    '2014-autumn': exam('2014-autumn', '平成26年度', '秋期', 'https://www.ipa.go.jp/shiken/mondai-kaiotu/2014h26.html', 'ug65p90000000ye5-att', '2014h26a'),
-    '2013-autumn': exam('2013-autumn', '平成25年度', '秋期', 'https://www.ipa.go.jp/shiken/mondai-kaiotu/2013h25.html', 'ug65p900000027za-att', '2013h25a'),
-    '2012-autumn': exam('2012-autumn', '平成24年度', '秋期', 'https://www.ipa.go.jp/shiken/mondai-kaiotu/2012h24.html', 'ug65p90000002h5m-att', '2012h24a'),
-    '2011-autumn': exam('2011-autumn', '平成23年度', '秋期', 'https://www.ipa.go.jp/shiken/mondai-kaiotu/2011h23.html', 'ug65p90000003ojp-att', '2011h23a'),
-    '2010-autumn': exam('2010-autumn', '平成22年度', '秋期', 'https://www.ipa.go.jp/shiken/mondai-kaiotu/2010h22.html', 'ug65p90000004d6f-att', '2010h22a'),
-    '2009-autumn': exam('2009-autumn', '平成21年度', '秋期', 'https://www.ipa.go.jp/shiken/mondai-kaiotu/2009h21.html', 'gmcbt8000000f3yi-att', '2009h21a')
+    '2025-spring': exam('令和7年度', '春期', 'https://www.ipa.go.jp/shiken/mondai-kaiotu/2025r07.html', 'nl10bi0000009lh8-att', '2025r07h'),
+    '2024-spring': exam('令和6年度', '春期', 'https://www.ipa.go.jp/shiken/mondai-kaiotu/2024r06.html', 'm42obm000000afqx-att', '2024r06h'),
+    '2023-spring': exam('令和5年度', '春期', 'https://www.ipa.go.jp/shiken/mondai-kaiotu/2023r05.html', 'ps6vr70000010d6y-att', '2023r05h'),
+    '2022-spring': exam('令和4年度', '春期', 'https://www.ipa.go.jp/shiken/mondai-kaiotu/2022r04.html', 'gmcbt80000009sgk-att', '2022r04h'),
+    '2021-spring': exam('令和3年度', '春期', 'https://www.ipa.go.jp/shiken/mondai-kaiotu/2021r03.html', 'gmcbt8000000d5ru-att', '2021r03h'),
+    '2019-autumn': exam('令和元年度', '秋期', 'https://www.ipa.go.jp/shiken/mondai-kaiotu/2019h31.html', 'gmcbt8000000dict-att', '2019r01a'),
+    '2018-autumn': exam('平成30年度', '秋期', 'https://www.ipa.go.jp/shiken/mondai-kaiotu/2018h30.html', 'gmcbt8000000f01f-att', '2018h30a'),
+    '2017-autumn': exam('平成29年度', '秋期', 'https://www.ipa.go.jp/shiken/mondai-kaiotu/2017h29.html', 'gmcbt8000000fqpm-att', '2017h29a'),
+    '2016-autumn': exam('平成28年度', '秋期', 'https://www.ipa.go.jp/shiken/mondai-kaiotu/2016h28.html', 'gmcbt8000000g6fw-att', '2016h28a'),
+    '2015-autumn': exam('平成27年度', '秋期', 'https://www.ipa.go.jp/shiken/mondai-kaiotu/2015h27.html', 'gmcbt8000000gxj0-att', '2015h27a'),
+    '2014-autumn': exam('平成26年度', '秋期', 'https://www.ipa.go.jp/shiken/mondai-kaiotu/2014h26.html', 'ug65p90000000ye5-att', '2014h26a'),
+    '2013-autumn': exam('平成25年度', '秋期', 'https://www.ipa.go.jp/shiken/mondai-kaiotu/2013h25.html', 'ug65p900000027za-att', '2013h25a'),
+    '2012-autumn': exam('平成24年度', '秋期', 'https://www.ipa.go.jp/shiken/mondai-kaiotu/2012h24.html', 'ug65p90000002h5m-att', '2012h24a'),
+    '2011-autumn': exam('平成23年度', '秋期', 'https://www.ipa.go.jp/shiken/mondai-kaiotu/2011h23.html', 'ug65p90000003ojp-att', '2011h23a'),
+    '2010-autumn': exam('平成22年度', '秋期', 'https://www.ipa.go.jp/shiken/mondai-kaiotu/2010h22.html', 'ug65p90000004d6f-att', '2010h22a'),
+    '2009-autumn': exam('平成21年度', '秋期', 'https://www.ipa.go.jp/shiken/mondai-kaiotu/2009h21.html', 'gmcbt8000000f3yi-att', '2009h21a')
   };
 
   const panelsEl = document.getElementById('panels');
   const documentPickerEl = document.getElementById('document-picker');
   const yearSelect = document.getElementById('year-select');
+  const paperSelect = document.getElementById('paper-select');
   const seasonLabel = document.getElementById('season-label');
   const cacheStatus = document.getElementById('cache-status');
   const toastEl = document.getElementById('toast');
@@ -72,6 +78,14 @@
     yearSelect.appendChild(option);
   });
   yearSelect.addEventListener('change', renderYear);
+  try {
+    const savedPaper = localStorage.getItem('st-study-paper-v1');
+    if (savedPaper === 'pm1' || savedPaper === 'pm2') paperSelect.value = savedPaper;
+  } catch (_) {}
+  paperSelect.addEventListener('change', function () {
+    try { localStorage.setItem('st-study-paper-v1', paperSelect.value); } catch (_) {}
+    renderYear();
+  });
   document.getElementById('source-link').href = YEARS[yearSelect.value].sourcePage;
   document.getElementById('clear-cache').addEventListener('click', clearPdfCache);
   bookmarkForm.addEventListener('submit', saveBookmarkFromDialog);
@@ -87,7 +101,7 @@
     panelInstances.length = 0;
     panelsEl.replaceChildren();
     documentPickerEl.replaceChildren();
-    year.docs.forEach(function (doc, index) {
+    examDocs(yearId, year, paperSelect.value).forEach(function (doc, index) {
       const instance = makePanel(yearId, doc, index);
       panelInstances.push(instance);
       panelsEl.appendChild(instance.root);
@@ -124,7 +138,7 @@
     visiblePanels.forEach(function (panel, index) { panel.root.dataset.visibleIndex = String(index + 1); });
   }
   function makePanel(yearId, doc, index) {
-    const key = 'st-study-v1:' + yearId + ':' + doc.id;
+    const key = 'st-study-v1:' + yearId + ':' + paperSelect.value + ':' + doc.id;
     const state = readState(key);
     const panel = {
       yearId: yearId, doc: doc, key: key, state: state,

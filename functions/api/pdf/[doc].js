@@ -23,6 +23,11 @@ const PDF_SUFFIXES = {
   comment: "cmnt",
 };
 
+const PAPERS = {
+  pm1: "pm1",
+  pm2: "pm2",
+};
+
 export async function onRequest({ request, params }) {
   if (request.method !== "GET" && request.method !== "HEAD") {
     return new Response("Method not allowed", {
@@ -33,8 +38,9 @@ export async function onRequest({ request, params }) {
 
   const exam = EXAMS[new URL(request.url).searchParams.get("year")];
   const suffix = PDF_SUFFIXES[params.doc];
-  const source = exam && suffix
-    ? `https://www.ipa.go.jp/shiken/mondai-kaiotu/${exam[0]}/${exam[1]}_st_pm1_${suffix}.pdf`
+  const paper = PAPERS[new URL(request.url).searchParams.get("paper") || "pm1"];
+  const source = exam && suffix && paper
+    ? `https://www.ipa.go.jp/shiken/mondai-kaiotu/${exam[0]}/${exam[1]}_st_${paper}_${suffix}.pdf`
     : null;
   if (!source) return new Response("Not found", { status: 404 });
 

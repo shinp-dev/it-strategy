@@ -4,21 +4,26 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#f6f5f1">
-  <meta name="description" content="ITストラテジスト午後Iの過去問を並べて読み比べ、学習メモを残せるローカル学習ノート。">
-  <title>午後I 読み比べノート</title>
+  <meta name="description" content="ITストラテジスト午後I・午後IIの過去問を並べて読み比べ、学習メモを残せるローカル学習ノート。">
+  <title>午後I・II 読み比べノート</title>
   <link rel="stylesheet" href="./styles.css">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js" defer></script>
   <script src="./app.js" defer></script>
 </head>
 <body>
   <header class="topbar">
-    <a class="brand" href="./" aria-label="午後I 読み比べノート">
+    <a class="brand" href="./" aria-label="午後I・II 読み比べノート">
       <span class="brand-mark">I</span>
-      <span><strong>午後I 読み比べノート</strong><small>IT STRATEGIST · STUDY DESK</small></span>
+      <span><strong>午後I・II 読み比べノート</strong><small>IT STRATEGIST · STUDY DESK</small></span>
     </a>
     <div class="year-control">
       <label for="year-select">年度</label>
       <select id="year-select" aria-label="年度を選択"></select>
+      <label for="paper-select">科目</label>
+      <select id="paper-select" aria-label="午後I・午後IIを選択">
+        <option value="pm1">午後Ⅰ</option>
+        <option value="pm2">午後Ⅱ</option>
+      </select>
       <span id="season-label" class="season-pill"></span>
     </div>
     <div class="top-actions">
